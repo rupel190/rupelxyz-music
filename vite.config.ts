@@ -3,7 +3,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 // Every page in this repo is served under rupel.xyz/music/ by its own worker (see
 // wrangler.jsonc). One HTML entry per page; Vite builds them together and shares chunks.
-const pages = ['index', 'songmap/index', 'modes/index', 'singify/index']
+const pages = ['index', 'songmap/index', 'modes/index', 'tubs/index', 'singify/index']
 
 // https://vite.dev/config/
 export default defineConfig({
