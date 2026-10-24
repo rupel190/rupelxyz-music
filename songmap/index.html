@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Song Map — map a track's structure, sections and arrangement</title>
+    <title>Songmap — map a track's structure, sections and arrangement</title>
     <meta
       name="description"
       content="Load an audio file and map how the track is built: waveform, BPM bar-grid, colour-coded section markers (intro / verse / chorus / drop) and instrument arrangement lanes. Runs entirely in the browser — nothing is uploaded."
@@ -18,8 +18,8 @@
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://rupel.xyz/music/songmap/" />
-    <meta property="og:site_name" content="Song Map" />
-    <meta property="og:title" content="Song Map — map a track's structure, sections and arrangement" />
+    <meta property="og:site_name" content="Songmap" />
+    <meta property="og:title" content="Songmap — map a track's structure, sections and arrangement" />
     <meta
       property="og:description"
       content="Waveform, BPM bar-grid, section markers and arrangement lanes. Entirely client-side — your audio never leaves the browser."
@@ -29,20 +29,27 @@
     <meta property="og:image:height" content="630" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Song Map — map a track's structure, sections and arrangement" />
+    <meta name="twitter:title" content="Songmap — map a track's structure, sections and arrangement" />
     <meta
       name="twitter:description"
       content="Waveform, BPM bar-grid, section markers and arrangement lanes. Entirely client-side — your audio never leaves the browser."
     />
     <meta name="twitter:image" content="https://rupel.xyz/music/songmap/og-image.jpg" />
 
-    <meta name="theme-color" content="#0d0c10" />
+    <meta name="theme-color" content="#f0ebe2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1c1612" media="(prefers-color-scheme: dark)" />
+    <link rel="alternate" type="application/rss+xml" title="Christoph Rippel — Writing" href="https://rupel.xyz/feed.xml" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/blog.css" />
 
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebApplication",
-        "name": "Song Map",
+        "name": "Songmap",
         "url": "https://rupel.xyz/music/songmap/",
         "description": "A client-side tool for mapping the structure of a track: waveform, BPM bar-grid, section markers and instrument arrangement lanes.",
         "applicationCategory": "MultimediaApplication",
@@ -55,15 +62,55 @@
     </script>
 
     <style>
-      html,
-      body {
-        margin: 0;
-        background: #0d0c10;
+      /* Same paper page as the mode lab: site fonts and palette from blog.css, the page
+         chrome here, the app's own controls in SongMap.svelte. The waveform and arrangement
+         canvas is the instrument surface and stays dark rosewood in both themes, like the
+         lab's fretboard; draw() reads the --board…--on-mark tokens at paint time. */
+      :root {
+        --bg: #f0ebe2; --surface: #f7f3ec; --ink: #1a1410; --muted: #7a6e62; --line: #d4ccc0;
+        --cell: #2a2018; --cell-off: #e5ddd0; --link: #8b3a1e; --danger: #a3341c;
+        --board: #33221c; --board-edge: #22160f; --lane-row: #2b1c16;
+        --wave: #c4a77c; --cream: #f0e9d8; --on-mark: #1a1410;
+        --grid-bar: rgba(240, 233, 216, 0.12); --grid-four: rgba(240, 233, 216, 0.42);
+        --grid-num: rgba(240, 233, 216, 0.85); --lane-tag: rgba(26, 17, 12, 0.78);
+        --f-display: 'DM Serif Display', Georgia, serif;
+        --f-body: 'Newsreader', Georgia, serif;
+        --f-mono: 'DM Mono', ui-monospace, monospace;
       }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1c1612; --surface: #251d17; --ink: #f0ebe2; --muted: #a89c8e; --line: #3a3029;
+          --cell: #e5ddd0; --cell-off: #2e251e; --link: #c8794a; --danger: #e07a5f;
+          color-scheme: dark;
+        }
+      }
+
+      body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 17px; line-height: 1.5; }
+      * { box-sizing: border-box; }
+      button, input { font: inherit; color: inherit; }
+      button { cursor: pointer; }
+
+      .wrap { max-width: 1000px; margin: 0 auto; padding: 48px 16px 96px; display: flex; flex-direction: column; gap: 28px; }
+      .wrap .topnav { margin-bottom: 0; }
+      .wrap .post-foot { margin-top: 8px; }
+
+      .eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+      .wrap > header { display: flex; flex-direction: column; gap: 6px; padding-bottom: 24px; border-bottom: 2px solid var(--ink); }
+      h1 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(34px, 6vw, 52px); line-height: 1.05; letter-spacing: -0.02em; }
+      .lede { margin: 4px 0 0; max-width: 62ch; color: var(--muted); font-style: italic; }
     </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div class="wrap">
+      <nav class="topnav"><a href="/">&larr; rupel.xyz</a><a href="/music/">music</a><a href="/writing/">writing</a></nav>
+      <header>
+        <span class="eyebrow">Song structure</span>
+        <h1>Songmap</h1>
+        <p class="lede">Load a track and map it bar by bar: where each section starts and which instruments play when, all inside your browser.</p>
+      </header>
+      <main id="app"></main>
+      <footer class="post-foot"><a href="/music/">&larr; all music</a></footer>
+    </div>
     <script type="module" src="/src/songmap/main.ts"></script>
   </body>
 </html>

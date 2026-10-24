@@ -25,27 +25,63 @@
     },
   };
 
+  // Marker and lane colours. They're painted on the dark rosewood board (as lines, and as
+  // label fills under dark text) and shown as dots on the paper page, so each is a light,
+  // fairly saturated mid-tone with its own hue.
+  const C = {
+    slate: '#9fabb7',
+    blue: '#74a9d4',
+    green: '#93c08a',
+    amber: '#e8a258',
+    red: '#e2685a',
+    lavender: '#b598d8',
+    khaki: '#cdb85e',
+    rose: '#e08fb0',
+    teal: '#6fc4b4',
+  };
+  // Maps saved before the restyle carry the old hex values; paint them in the new palette.
+  const LEGACY: Record<string, string> = {
+    '#6b7a8f': C.slate,
+    '#4a8fb8': C.blue,
+    '#7b9e7e': C.green,
+    '#d4915d': C.amber,
+    '#c45b5b': C.red,
+    '#9a7bb8': C.lavender,
+    '#8f8f6b': C.khaki,
+    '#b8709e': C.rose,
+    '#5fb0a8': C.teal,
+  };
+  const paint = (color: string) => LEGACY[color.toLowerCase()] ?? color;
+  // Lane colours in the order new lanes take them.
+  const LANE_PALETTE = [C.red, C.amber, C.lavender, C.blue, C.green, C.khaki, C.rose, C.teal];
+
   // Section presets — color-coded, tap to set marker type quickly.
   const SECTIONS: Section[] = [
-    { name: 'Intro', color: '#6b7a8f' },
-    { name: 'Verse', color: '#4a8fb8' },
-    { name: 'Pre', color: '#7b9e7e' },
-    { name: 'Chorus', color: '#d4915d' },
-    { name: 'Drop', color: '#c45b5b' },
-    { name: 'Bridge', color: '#9a7bb8' },
-    { name: 'Break', color: '#8f8f6b' },
-    { name: 'Outro', color: '#6b7a8f' },
+    { name: 'Intro', color: C.slate },
+    { name: 'Verse', color: C.blue },
+    { name: 'Pre', color: C.green },
+    { name: 'Chorus', color: C.amber },
+    { name: 'Drop', color: C.red },
+    { name: 'Bridge', color: C.lavender },
+    { name: 'Break', color: C.khaki },
+    { name: 'Outro', color: C.slate },
   ];
 
   // Default instrument lanes for a fresh track. Stored per-file once edited.
   const DEFAULT_LANES: { name: string; color: string }[] = [
-    { name: 'Kick', color: '#c45b5b' },
-    { name: 'Bass', color: '#d4915d' },
-    { name: 'Drums', color: '#9a7bb8' },
-    { name: 'Lead', color: '#4a8fb8' },
-    { name: 'Pads', color: '#7b9e7e' },
-    { name: 'FX', color: '#8f8f6b' },
+    { name: 'Kick', color: C.red },
+    { name: 'Bass', color: C.amber },
+    { name: 'Drums', color: C.lavender },
+    { name: 'Lead', color: C.blue },
+    { name: 'Pads', color: C.green },
+    { name: 'FX', color: C.khaki },
   ];
+
+  // Canvas text uses the site's mono face. Marker hit-boxes are measured with MARKER_FONT,
+  // so draw() and markerLabelWidth() must keep using the same string.
+  const MARKER_FONT = "11px 'DM Mono', ui-monospace, monospace";
+  const BAR_FONT = "10px 'DM Mono', ui-monospace, monospace";
+  const LANE_FONT = "500 10px 'DM Mono', ui-monospace, monospace";
 
   const WAVE_H = 200;
   const GAP = 10;
@@ -91,6 +127,12 @@
   // True while a block is being drawn by dragging — used to hide its edit popups
   // so they don't jump around mid-drag.
   let creating = $state(false);
+  // Bumped when the canvas webfonts finish loading, so labels re-measure and repaint.
+  let fontEpoch = $state(0);
+  Promise.all([MARKER_FONT, LANE_FONT].map((f) => document.fonts.load(f))).then(
+    () => fontEpoch++,
+    () => {}
+  );
 
   // ── Non-reactive refs ───────────────────────────────────────────────────────
   let audioCtx: AudioContext | null = null;
@@ -366,9 +408,10 @@
   }
   // Measure a label the same way draw() does, so the hit-box matches what's drawn.
   function markerLabelWidth(name: string): number {
+    void fontEpoch; // re-measure once the webfont has arrived
     const ctx = canvasEl?.getContext('2d');
     if (!ctx) return name.length * 6.5 + 10;
-    ctx.font = '11px ui-sans-serif, system-ui';
+    ctx.font = MARKER_FONT;
     return ctx.measureText(name).width + 10;
   }
   // Only a label box grabs a marker — taps elsewhere on the line seek instead.
@@ -661,7 +704,7 @@
     if (text.trim()) applyTSV(text);
   }
   function applyTSV(text: string) {
-    const palette = ['#c45b5b', '#d4915d', '#9a7bb8', '#4a8fb8', '#7b9e7e', '#8f8f6b', '#b8709e', '#5fb0a8'];
+    const palette = LANE_PALETTE;
     const newMarkers: Marker[] = [];
     // Seed with existing lanes so a matching name keeps its id/color; blocks reset.
     const laneMap = new Map<string, Lane>();
@@ -688,7 +731,7 @@
         const name = cells[0]?.trim();
         const t = parseTimeStr((cells[1] ?? '').trim());
         if (!name || isNaN(t)) continue;
-        const color = SECTIONS.find((s) => s.name.toLowerCase() === name.toLowerCase())?.color ?? '#6b7a8f';
+        const color = SECTIONS.find((s) => s.name.toLowerCase() === name.toLowerCase())?.color ?? C.slate;
         newMarkers.push({ id: Date.now() + Math.random(), t: clamp(t, 0, duration), name, color });
         const bv = parseFloat(cells[3]);
         if (bv >= 40 && bv <= 300) importedBpm = bv;
@@ -803,7 +846,7 @@
     lanes = lanes.filter((x) => x.id !== laneId);
   }
   function addLane() {
-    const palette = ['#c45b5b', '#d4915d', '#9a7bb8', '#4a8fb8', '#7b9e7e', '#8f8f6b', '#b8709e', '#5fb0a8'];
+    const palette = LANE_PALETTE;
     const color = palette[lanes.length % palette.length];
     const lane = makeLane(`Lane ${lanes.length + 1}`, color);
     lanes = [...lanes, lane];
@@ -862,13 +905,18 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssW, cssH);
     const tx = (t: number) => (duration ? (t / duration) * cssW : 0);
+    // Board colours are CSS tokens (songmap/index.html), the same in both themes.
+    void fontEpoch;
+    const css = getComputedStyle(canvas);
+    const tok = (name: string) => css.getPropertyValue(name).trim();
+    const cream = tok('--cream');
 
     // waveform box
-    ctx.fillStyle = '#16151a';
+    ctx.fillStyle = tok('--board');
     ctx.fillRect(0, 0, cssW, WAVE_H);
     const mid = WAVE_H / 2;
     if (peaks) {
-      ctx.fillStyle = '#5a93b8';
+      ctx.fillStyle = tok('--wave');
       const n = peaks.length;
       for (let i = 0; i < n; i++) {
         const x = (i / n) * cssW;
@@ -879,21 +927,24 @@
 
     // arrangement box + lane rows
     if (peaks) {
-      ctx.fillStyle = '#0f0e14';
+      ctx.fillStyle = tok('--board-edge');
       ctx.fillRect(0, laneTop0, cssW, lanesH);
+      ctx.fillStyle = tok('--lane-row');
       lanes.forEach((_lane, li) => {
-        ctx.fillStyle = '#15141b';
         ctx.fillRect(0, laneTop0 + li * (LANE_H + LANE_GAP), cssW, LANE_H);
       });
     }
 
     // bar grid
     if (showGrid && duration && secPerBar > 0) {
+      const gridFour = tok('--grid-four');
+      const gridBar = tok('--grid-bar');
+      const gridNum = tok('--grid-num');
       let bar = 1;
       for (let t = firstBeat; t < duration; t += secPerBar) {
         const x = Math.round((t / duration) * cssW) + 0.5;
         const isFour = (bar - 1) % 4 === 0;
-        ctx.strokeStyle = isFour ? 'rgba(240,233,216,0.42)' : 'rgba(240,233,216,0.12)';
+        ctx.strokeStyle = isFour ? gridFour : gridBar;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -906,8 +957,8 @@
           ctx.stroke();
         }
         if (isFour && cssW > 360) {
-          ctx.fillStyle = 'rgba(240,233,216,0.85)';
-          ctx.font = '10px ui-monospace, monospace';
+          ctx.fillStyle = gridNum;
+          ctx.font = BAR_FONT;
           ctx.fillText(String(bar), x + 3, 12);
         }
         bar++;
@@ -917,10 +968,12 @@
     // arrangement blocks + lane labels
     if (peaks) {
       const sel = selectedBlock;
+      const laneTag = tok('--lane-tag');
       lanes.forEach((lane, li) => {
         const top = laneTop0 + li * (LANE_H + LANE_GAP);
         const innerTop = top + 6;
         const bot = top + LANE_H - 6;
+        const color = paint(lane.color);
         lane.blocks.forEach((bl) => {
           const x1 = tx(timeAtBar(bl.startBar));
           const x2 = tx(timeAtBar(bl.endBar));
@@ -934,15 +987,15 @@
           ctx.lineTo(xOut, innerTop);
           ctx.lineTo(x2, bot);
           ctx.closePath();
-          ctx.fillStyle = lane.color;
+          ctx.fillStyle = color;
           ctx.globalAlpha = isSel ? 0.95 : 0.8;
           ctx.fill();
           ctx.globalAlpha = 1;
-          ctx.strokeStyle = isSel ? '#f0e9d8' : lighten(lane.color);
+          ctx.strokeStyle = isSel ? cream : lighten(color);
           ctx.lineWidth = isSel ? 2.5 : 1.5;
           ctx.stroke();
           if (isSel) {
-            ctx.fillStyle = '#f0e9d8';
+            ctx.fillStyle = cream;
             for (const [hx, hy] of [
               [x1, bot],
               [x2, bot],
@@ -958,26 +1011,28 @@
         });
         // lane label
         ctx.save();
-        ctx.font = '600 10px ui-sans-serif, system-ui';
+        ctx.font = LANE_FONT;
         ctx.textBaseline = 'middle';
         const nm = lane.name.length > 10 ? lane.name.slice(0, 10) + '…' : lane.name;
         const tw = ctx.measureText(nm).width;
-        ctx.fillStyle = 'rgba(13,12,16,0.72)';
+        ctx.fillStyle = laneTag;
         ctx.fillRect(0, top, tw + 12, 16);
-        ctx.fillStyle = lane.color;
+        ctx.fillStyle = color;
         ctx.fillText(nm, 6, top + 8);
         ctx.restore();
       });
     }
 
     // markers — labels staggered onto two rows (markerRows) so close ones don't overlap
-    ctx.font = '11px ui-sans-serif, system-ui';
+    ctx.font = MARKER_FONT;
+    const onMark = tok('--on-mark');
     markers.forEach((m) => {
       const x = tx(m.t);
       const ly = (markerRows.get(m.id) ?? 0) * MARKER_ROW_DY;
       const isSel = m.id === selectedMarkerId;
+      const color = paint(m.color);
       ctx.save();
-      ctx.strokeStyle = isSel ? '#f0e9d8' : m.color;
+      ctx.strokeStyle = isSel ? cream : color;
       ctx.lineWidth = isSel ? 3 : 2;
       ctx.beginPath();
       ctx.moveTo(x, 0);
@@ -990,12 +1045,12 @@
         ctx.stroke();
       }
       const w = ctx.measureText(m.name).width + 10;
-      ctx.fillStyle = m.color;
+      ctx.fillStyle = color;
       ctx.fillRect(x, ly, w, MARKER_LABEL_H);
-      ctx.fillStyle = '#0d0c10';
+      ctx.fillStyle = onMark;
       ctx.fillText(m.name, x + 5, ly + 12);
       if (isSel) {
-        ctx.strokeStyle = '#f0e9d8';
+        ctx.strokeStyle = cream;
         ctx.lineWidth = 1.5;
         ctx.strokeRect(x + 0.5, ly + 0.5, w, MARKER_LABEL_H);
       }
@@ -1005,7 +1060,7 @@
     // playhead
     if (duration) {
       const px = (position / duration) * cssW;
-      ctx.strokeStyle = '#f0e9d8';
+      ctx.strokeStyle = cream;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(px, 0);
@@ -1025,16 +1080,16 @@
   <header class="topbar">
     <div class="topbar-row">
       <div class="titleblock">
-        <div class="kicker">SONG MAP</div>
-        <h1 class="title">{fileName || 'Load a track to begin'}</h1>
+        <div class="lbl">Track</div>
+        <h2 class="title">{fileName || 'Load a track to begin'}</h2>
       </div>
       <div class="fileActions">
-        <button class="exportBtn" onclick={importTSV} disabled={!peaks}>Import TSV</button>
-        <button class="exportBtn" onclick={exportTSV} disabled={!showFooter}>{copied ? 'Copied ✓' : 'Copy TSV'}</button>
-        <button class="clearAll" class:armed={confirmClear} onclick={clearAll} disabled={!showFooter}>
+        <button class="btn exportBtn" onclick={importTSV} disabled={!peaks}>Import TSV</button>
+        <button class="btn exportBtn" onclick={exportTSV} disabled={!showFooter}>{copied ? 'Copied ✓' : 'Copy TSV'}</button>
+        <button class="btn clearAll" class:armed={confirmClear} onclick={clearAll} disabled={!showFooter}>
           {confirmClear ? 'Confirm?' : 'Clear all'}
         </button>
-        <label class="loadBtn">
+        <label class="btn loadBtn">
           {loading ? 'Decoding…' : fileName ? 'Replace' : 'Load audio'}
           <input type="file" accept="audio/*" onchange={handleFile} style="display:none" />
         </label>
@@ -1052,7 +1107,7 @@
         <span class="timeNow">{fmtTime(position)}</span>
         <span class="timeTotal">/ {fmtTime(duration)}</span>
       </div>
-      <div class="barReadout">bar <strong style="color:#d4915d">{currentBar > 0 ? currentBar : '–'}</strong></div>
+      <div class="barReadout">bar <strong>{currentBar > 0 ? currentBar : '–'}</strong></div>
     </div>
     <div class="cgroup volGroup">
       <span class="lbl">Vol</span>
@@ -1086,26 +1141,29 @@
           <button class="step" onclick={() => nudgeFirstBeat(0.05)}>+</button>
         </div>
       </div>
-      <button class="toggle" class:on={showGrid} onclick={() => (showGrid = !showGrid)}>
+      <button class="toggle" aria-pressed={showGrid} onclick={() => (showGrid = !showGrid)}>
         Grid {showGrid ? 'on' : 'off'}
       </button>
     </div>
   </div>
 
   <!-- Section palette -->
-  <div class="sectionRow">
-    {#each SECTIONS as sec (sec.name)}
-      {@const on = activeSection?.name === sec.name}
-      <button
-        class="sectionChip"
-        onclick={() => (activeSection = on ? null : sec)}
-        style="border-color:{sec.color}; background:{on ? sec.color : 'transparent'}; color:{on ? '#0d0c10' : sec.color};"
-        disabled={!peaks}
-        title={on ? `${sec.name} selected — tap again for seek mode` : `Select ${sec.name}`}
-      >
-        {sec.name}
-      </button>
-    {/each}
+  <div class="sectionGroup">
+    <span class="lbl" id="lbl-sections">Sections</span>
+    <div class="sectionRow" role="group" aria-labelledby="lbl-sections">
+      {#each SECTIONS as sec (sec.name)}
+        {@const on = activeSection?.name === sec.name}
+        <button
+          class="sectionChip"
+          aria-pressed={on}
+          onclick={() => (activeSection = on ? null : sec)}
+          disabled={!peaks}
+          title={on ? `${sec.name} selected — tap again for seek mode` : `Select ${sec.name}`}
+        >
+          <span class="laneDot" style="background:{sec.color}"></span>{sec.name}
+        </button>
+      {/each}
+    </div>
   </div>
 
   <!-- Waveform + arrangement canvas -->
@@ -1132,7 +1190,7 @@
       {@const cx = Math.max(98, Math.min(plotWidth - 98, r.centerX))}
       <div class="blockPop above" style="left:{cx}px; top:{r.top}px;">
         <div class="popHead">
-          <span class="laneDot" style="background:{selectedLane.color}"></span>
+          <span class="laneDot" style="background:{paint(selectedLane.color)}"></span>
           <strong class="popName">{selectedLane.name}</strong>
           <span class="popSub">bars {selectedBlockData.startBar}–{selectedBlockData.endBar}</span>
           <button class="popDel" title="Delete block" onclick={deleteSelectedBlock}>✕</button>
@@ -1176,7 +1234,7 @@
       {@const cx = Math.max(98, Math.min(plotWidth - 98, selectedMarkerRect.centerX))}
       <div class="blockPop marker" style="left:{cx}px; top:{selectedMarkerRect.top}px;">
         <div class="popHead">
-          <span class="laneDot" style="background:{selectedMarker.color}"></span>
+          <span class="laneDot" style="background:{paint(selectedMarker.color)}"></span>
           <strong class="popName">{selectedMarker.name}</strong>
           <span class="popSub">{fmtTime(selectedMarker.t)} · bar {barAtTime(selectedMarker.t)}</span>
           <button
@@ -1210,137 +1268,190 @@
 
   <!-- Arrangement lane controls -->
   {#if peaks}
-    <div class="listHead">
-      <span>Arrangement</span>
-      <button class="addLaneBtn" onclick={addLane}>+ lane</button>
+    <div class="arrangement">
+      <div class="listHead">
+        <span class="listTitle">Arrangement</span>
+        <button class="btn addLaneBtn" onclick={addLane}>+ lane</button>
+      </div>
+      <div class="laneChips">
+        {#each lanes as l (l.id)}
+          <div class="laneChip">
+            <span class="laneDot" style="background:{paint(l.color)}"></span>
+            {#if editingLaneId === l.id}
+              <input
+                class="laneNameEdit"
+                value={editingName}
+                oninput={(e) => (editingName = e.currentTarget.value)}
+                onkeydown={(e) => {
+                  if (e.key === 'Enter') commitEditLane();
+                  else if (e.key === 'Escape') cancelEditLane();
+                }}
+                onblur={commitEditLane}
+                use:autofocus
+              />
+            {:else}
+              <button class="laneName" title="Rename lane" onclick={() => startEditLane(l)}>{l.name}</button>
+            {/if}
+            <button class="laneRemove" title="Remove lane" onclick={() => removeLane(l.id)}>✕</button>
+          </div>
+        {/each}
+      </div>
+      <p class="hint">Tap an empty lane to add a block · tap a block to edit it.</p>
     </div>
-    <div class="laneChips">
-      {#each lanes as l (l.id)}
-        <div class="laneChip" style="border-color:{l.color}55">
-          <span class="laneDot" style="background:{l.color}"></span>
-          {#if editingLaneId === l.id}
-            <input
-              class="laneNameEdit"
-              value={editingName}
-              oninput={(e) => (editingName = e.currentTarget.value)}
-              onkeydown={(e) => {
-                if (e.key === 'Enter') commitEditLane();
-                else if (e.key === 'Escape') cancelEditLane();
-              }}
-              onblur={commitEditLane}
-              use:autofocus
-            />
-          {:else}
-            <button class="laneName" title="Rename lane" onclick={() => startEditLane(l)}>{l.name}</button>
-          {/if}
-          <button class="laneRemove" title="Remove lane" onclick={() => removeLane(l.id)}>✕</button>
-        </div>
-      {/each}
-    </div>
-    <div class="hint">Tap an empty lane to add a block · tap a block to edit it.</div>
   {/if}
 </div>
 
 <style>
+  /* Paper page, mode-lab controls: 6px bordered buttons, ink fill when pressed, mono
+     uppercase labels. Inside the surface-coloured controls panel and the popups the
+     buttons sit on --bg, as the lab does inside its cards. The canvas is the dark board. */
   .app {
-    --mono: ui-monospace, 'SF Mono', Menlo, monospace;
-    --sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
-    background: #0d0c10;
-    color: #cfcad9;
-    font-family: var(--sans);
-    min-height: 100vh;
-    padding: 20px 16px 40px;
-    max-width: 760px;
-    margin: 0 auto;
-    box-sizing: border-box;
-  }
-
-  .topbar {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-bottom: 18px;
+    gap: 18px;
+    min-width: 0;
   }
+
+  .lbl,
+  .popLbl {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* track title + file actions */
   .topbar-row {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: flex-end;
-    gap: 12px;
+    gap: 12px 18px;
   }
   .titleblock {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     min-width: 0;
+  }
+  .title {
+    margin: 0;
+    font-family: var(--f-display);
+    font-weight: 400;
+    font-size: clamp(24px, 4vw, 32px);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
   }
   .fileActions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    flex-shrink: 0;
+    gap: 6px;
   }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    height: 38px;
+    padding: 0 13px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .clearAll {
+    color: var(--danger);
+  }
+  .clearAll.armed {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--bg);
+  }
+  .loadBtn {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--bg);
+    font-weight: 500;
+  }
+
+  /* transport + grid panel */
   .controls {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 12px 18px;
-    margin: 16px 0;
-    padding: 10px 14px;
-    background: #131218;
-    border: 1px solid #1f1d28;
-    border-radius: 10px;
+    gap: 14px 24px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
   }
   .cgroup {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
+    gap: 10px 12px;
   }
   .volGroup {
     gap: 8px;
   }
   .volSlider {
     width: 96px;
-    accent-color: #4a8fb8;
+    accent-color: var(--warm);
     cursor: pointer;
   }
-  .kicker {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.28em;
-    color: #8e89a3;
-    margin-bottom: 4px;
-  }
-  .title {
-    font-size: 19px;
-    font-weight: 600;
-    margin: 0;
-    color: #e8e4da;
-    word-break: break-word;
-    line-height: 1.2;
-  }
-  .loadBtn {
+  .playBtn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--bg);
+    font-size: 15px;
     flex-shrink: 0;
-    background: #d4915d;
-    color: #0d0c10;
-    border: none;
-    border-radius: 8px;
-    padding: 9px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    align-self: center;
   }
-
+  .skipBtn {
+    height: 38px;
+    min-width: 44px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .timeReadout {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: var(--f-mono);
+  }
+  .timeNow {
+    font-size: 20px;
+  }
+  .timeTotal {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .barReadout {
+    font-family: var(--f-mono);
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .barReadout strong {
+    color: var(--link);
+    font-weight: 500;
+  }
   .gridControl {
     display: flex;
     flex-direction: column;
     gap: 5px;
-  }
-  .lbl {
-    font-size: 10px;
-    font-family: var(--mono);
-    letter-spacing: 0.1em;
-    color: #8e89a3;
-    text-transform: uppercase;
   }
   .stepperRow {
     display: flex;
@@ -1350,90 +1461,99 @@
   .step {
     width: 30px;
     height: 32px;
+    padding: 0;
     border-radius: 6px;
-    border: 1px solid #2c2a38;
-    background: #1c1b22;
-    color: #cfcad9;
+    border: 1px solid var(--line);
+    background: var(--bg);
     font-size: 16px;
-    cursor: pointer;
   }
   .numInput {
     width: 54px;
     height: 32px;
     text-align: center;
-    background: #0d0c10;
-    border: 1px solid #2c2a38;
+    background: var(--bg);
+    border: 1px solid var(--line);
     border-radius: 6px;
-    color: #e8e4da;
+    font-family: var(--f-mono);
     font-size: 15px;
-    font-family: var(--mono);
   }
   .offsetVal {
     min-width: 52px;
     text-align: center;
-    font-family: var(--mono);
+    font-family: var(--f-mono);
     font-size: 14px;
-    color: #e8e4da;
   }
-  .tapBtn {
-    height: 32px;
-    padding: 0 16px;
-    border-radius: 6px;
-    border: 1px solid #3a3850;
-    background: #1c1b22;
-    color: #d4915d;
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    cursor: pointer;
-  }
+  .tapBtn,
   .toggle {
     height: 32px;
-    padding: 0 12px;
+    padding: 0 14px;
     border-radius: 6px;
-    border: 1px solid #2c2a38;
-    background: #1c1b22;
-    color: #a8a3bd;
-    font-size: 12px;
-    cursor: pointer;
-    font-family: var(--mono);
+    border: 1px solid var(--line);
+    background: var(--bg);
+    font-family: var(--f-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    align-self: flex-end;
   }
-  .toggle.on {
-    border-color: #4a8fb8;
-    color: #4a8fb8;
+  .toggle[aria-pressed='true'] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--bg);
+  }
+
+  /* section palette */
+  .sectionGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
   }
   .sectionRow {
     display: flex;
     flex-wrap: wrap;
-    gap: 7px;
-    margin-top: 6px;
+    gap: 6px;
   }
   .sectionChip {
-    border: 1.5px solid;
-    border-radius: 7px;
-    padding: 8px 12px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
     flex: 1 1 auto;
     min-width: 64px;
+    padding: 7px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    font-weight: 500;
+  }
+  .sectionChip[aria-pressed='true'] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--bg);
+  }
+  .laneDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
   }
 
+  /* the board: waveform + arrangement canvas */
   .canvasWrap {
     position: relative;
     width: 100%;
-    border-radius: 10px;
+    border-radius: 8px;
     /* visible (not hidden) so the block edit popups can extend above/below the
        canvas frame; the canvas keeps its own rounded corners. */
     overflow: visible;
-    border: 1px solid #262433;
-    margin-top: 16px;
+    border: 1px solid var(--board-edge);
+    background: var(--board-edge);
   }
   .canvas {
     display: block;
     width: 100%;
-    border-radius: 10px;
+    border-radius: 7px;
     /* pan-y: vertical drags still scroll the page; horizontal drags reach our
        pointer handlers to size a new block. pinch-zoom stays available. */
     touch-action: pan-y pinch-zoom;
@@ -1444,9 +1564,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #6a6780;
-    font-size: 13px;
-    font-family: var(--mono);
+    color: var(--cream);
+    opacity: 0.6;
+    font-size: 12px;
+    font-family: var(--f-mono);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
     pointer-events: none;
   }
 
@@ -1457,11 +1580,13 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 8px 10px;
-    background: #161520;
-    border: 1px solid #3a3650;
-    border-radius: 10px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    padding: 9px 11px;
+    background: var(--surface);
+    color: var(--ink);
+    /* ink-tinted rather than --line: in dark mode --line nearly matches the board */
+    border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+    border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(20, 12, 8, 0.4);
     max-width: 92vw;
   }
   .blockPop.above {
@@ -1472,42 +1597,47 @@
     /* center on the block, sit just below the lane row */
     transform: translate(-50%, 8px);
   }
+  /* The marker popup hangs straight down from its anchor (no vertical flip). */
+  .blockPop.marker {
+    transform: translateX(-50%);
+  }
   .popHead {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
   }
   .popName {
-    color: #e8e4da;
-    font-size: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
   }
   .popSub {
-    color: #8e89a3;
-    font-family: var(--mono);
+    color: var(--muted);
+    font-family: var(--f-mono);
     font-size: 11px;
+    white-space: nowrap;
+  }
+  .popDel,
+  .popDone {
+    height: 28px;
+    padding: 0 9px;
+    border-radius: 6px;
+    font-size: 13px;
   }
   .popDel {
     margin-left: auto;
     background: transparent;
-    border: 1px solid #3a2828;
-    color: #a86b6b;
-    border-radius: 6px;
-    padding: 3px 8px;
-    font-size: 12px;
-    cursor: pointer;
+    border: 1px solid var(--line);
+    color: var(--danger);
   }
   .popDone {
-    background: #1c1b22;
-    border: 1px solid #3a3850;
-    color: #4a8fb8;
-    border-radius: 6px;
-    padding: 3px 9px;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
+    background: var(--ink);
+    border: 1px solid var(--ink);
+    color: var(--bg);
   }
   .popRow {
     display: flex;
+    align-items: center;
     gap: 12px;
     flex-wrap: wrap;
   }
@@ -1517,202 +1647,104 @@
     gap: 4px;
   }
   .popLbl {
-    font-size: 9px;
-    font-family: var(--mono);
-    letter-spacing: 0.06em;
-    color: #8e89a3;
-    text-transform: uppercase;
+    font-size: 10px;
     margin-right: 2px;
+    white-space: nowrap;
   }
   .popStep {
     width: 34px;
     height: 34px;
-    border-radius: 7px;
-    border: 1px solid #3a3850;
-    background: #1c1b22;
-    color: #e8e4da;
-    font-size: 18px;
-    cursor: pointer;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    font-size: 16px;
   }
   .popVal {
     min-width: 26px;
     text-align: center;
-    font-family: var(--mono);
+    font-family: var(--f-mono);
     font-size: 14px;
-    color: #e8e4da;
   }
   .popVal.wide {
     min-width: 58px;
   }
-  /* The marker popup hangs straight down from its anchor (no vertical flip). */
-  .blockPop.marker {
-    transform: translateX(-50%);
-  }
   .popRename {
-    background: #1c1b22;
-    border: 1px solid #3a3850;
-    color: #cfcad9;
-    border-radius: 7px;
-    padding: 6px 12px;
-    font-size: 13px;
-    cursor: pointer;
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    font-size: 15px;
   }
   .popHint {
-    font-size: 10px;
-    color: #6a6780;
-    font-family: var(--mono);
+    font-size: 13.5px;
+    color: var(--muted);
+    font-style: italic;
   }
 
-  .timeReadout {
+  /* arrangement lanes */
+  .arrangement {
     display: flex;
-    align-items: baseline;
-    gap: 6px;
-    font-family: var(--mono);
+    flex-direction: column;
+    gap: 10px;
   }
-  .timeNow {
-    font-size: 18px;
-    color: #e8e4da;
-  }
-  .timeTotal {
-    font-size: 12px;
-    color: #8e89a3;
-  }
-  .barReadout {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: #a8a3bd;
-  }
-  .playBtn {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: 1px solid #3a3850;
-    background: #1c1b22;
-    color: #e8e4da;
-    font-size: 15px;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-  .skipBtn {
-    height: 38px;
-    min-width: 44px;
-    padding: 0 10px;
-    border-radius: 8px;
-    border: 1px solid #3a3850;
-    background: #1c1b22;
-    color: #cfcad9;
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
   .listHead {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: #8e89a3;
-    text-transform: uppercase;
-    border-bottom: 1px solid #1f1d28;
+    gap: 12px;
     padding-bottom: 8px;
-    margin-bottom: 4px;
-    margin-top: 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .listTitle {
+    font-family: var(--f-display);
+    font-size: 21px;
+    line-height: 1.2;
   }
   .addLaneBtn {
-    background: #1c1b22;
-    border: 1px solid #3a3850;
-    color: #4a8fb8;
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    text-transform: none;
-    letter-spacing: 0;
+    height: 32px;
   }
-  .hint {
-    font-size: 11px;
-    color: #6a6780;
-    font-family: var(--mono);
-    margin-top: 8px;
-  }
-
   .laneChips {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 8px;
   }
   .laneChip {
     display: flex;
     align-items: center;
     gap: 4px;
-    background: #16151a;
-    border: 1px solid;
+    background: var(--surface);
+    border: 1px solid var(--line);
     border-radius: 6px;
-    padding: 3px 4px 3px 8px;
-  }
-  .laneDot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
+    padding: 3px 4px 3px 10px;
   }
   .laneName {
     background: none;
     border: none;
-    color: #cfcad9;
-    font-size: 12px;
-    cursor: pointer;
-    font-family: var(--sans);
+    padding: 2px 4px;
+    font-size: 15px;
   }
   .laneNameEdit {
-    width: 84px;
-    background: #0d0c10;
-    border: 1px solid #3a3850;
+    width: 96px;
+    margin: 0 2px;
+    padding: 1px 6px;
+    background: var(--bg);
+    border: 1px solid var(--line);
     border-radius: 4px;
-    color: #e8e4da;
-    font-size: 12px;
-    font-family: var(--sans);
-    padding: 1px 4px;
+    font-size: 15px;
   }
   .laneRemove {
     background: none;
     border: none;
-    color: #8e89a3;
+    color: var(--muted);
     font-size: 13px;
-    cursor: pointer;
-    padding: 0 2px;
+    padding: 0 4px;
   }
-
-  .exportBtn {
-    background: #1c1b22;
-    border: 1px solid #3a3850;
-    color: #4a8fb8;
-    border-radius: 7px;
-    padding: 8px 16px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .clearAll {
-    background: transparent;
-    border: 1px solid #3a2828;
-    color: #a86b6b;
-    border-radius: 7px;
-    padding: 8px 14px;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .clearAll.armed {
-    background: #c45b5b;
-    border: 1px solid #c45b5b;
-    color: #0d0c10;
-    font-weight: 600;
+  .hint {
+    margin: 0;
+    font-size: 14.5px;
+    color: var(--muted);
   }
 
   button:disabled {

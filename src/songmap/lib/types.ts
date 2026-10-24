@@ -1,4 +1,4 @@
-// Shared data model for Song Map.
+// Shared data model for Songmap.
 
 /** A selectable section preset in the palette. */
 export interface Section {
