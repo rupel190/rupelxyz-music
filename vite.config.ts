@@ -3,7 +3,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 // Every page in this repo is served under rupel.xyz/music/ by its own worker (see
 // wrangler.jsonc). One HTML entry per page; Vite builds them together and shares chunks.
-const pages = ['songmap/index']
+const pages = ['index', 'songmap/index', 'modes/index', 'singify/index']
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -19,6 +19,18 @@ export default defineConfig({
     outDir: 'dist/music',
     rollupOptions: {
       input: Object.fromEntries(pages.map((p) => [p, `${p}.html`])),
+    },
+  },
+  server: {
+    // Pages link the site's stylesheet at /assets/blog.css, which the main rupel.xyz worker
+    // serves. There's no main worker in dev, so borrow the live one. The dev server rewrites
+    // the link with `base` (the build leaves it alone), hence the /music prefix here.
+    proxy: {
+      '/music/assets/blog.css': {
+        target: 'https://rupel.xyz',
+        changeOrigin: true,
+        rewrite: () => '/assets/blog.css',
+      },
     },
   },
   plugins: [svelte()],
