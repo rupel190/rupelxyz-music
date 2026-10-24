@@ -104,6 +104,7 @@ h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:clamp(26px,4v
 .fb .band{fill:var(--band)}
 .patinfo{margin:0;font-size:16px;color:var(--muted);max-width:72ch}
 .patinfo b{color:var(--ink);font-weight:600}
+.patinfo a{color:var(--link);text-decoration:none;border-bottom:1px solid var(--warm)}
 
 /* finder */
 .finder{display:flex;flex-direction:column;gap:2px}
@@ -348,6 +349,8 @@ h3{margin:0;font-family:var(--f-display);font-weight:400;font-size:21px;line-hei
     return out;
   }
   const ORD=['1st','2nd','3rd','4th','5th','6th','7th'];
+  // JustinGuitar's lesson for each pattern, linked when one is picked.
+  const JG_LESSON=n=>'https://www.justinguitar.com/guitar-lessons/the-major-scale-pattern-'+n+'-sc-25'+n;
 
   let state={root:4,mode:'dorian',labels:'deg',view:'full',pattern:'all'};
   try{const s=JSON.parse(localStorage.getItem('mode-lab-v1')||'null'); if(s&&MODES[s.mode]&&s.root>=0&&s.root<12) state=Object.assign(state,s);}catch(e){}
@@ -499,7 +502,7 @@ h3{margin:0;font-family:var(--f-display);font-weight:400;font-size:21px;line-hei
       pi+='Pick a pattern number to see one box on its own.';
     }else{
       const ranges=c.insts.map(w=>{const lo=Math.max(0,Math.min(...w.map(x=>x[0]))), hi=Math.min(FRETS,Math.max(...w.map(x=>x[1]))); return lo+'–'+hi;});
-      pi+='<b>Pattern '+state.pattern+' of '+pk+'</b> sits at frets '+ranges.join(' and ')+'. Play it as you learned it and land on the red '+names[0]+'.';
+      pi+='<b>Pattern '+state.pattern+' of '+pk+'</b> sits at frets '+ranges.join(' and ')+'. Play it as you learned it and land on the red '+names[0]+'. Refresher: JustinGuitar’s <a href="'+JG_LESSON(state.pattern)+'" target="_blank" rel="noopener">Pattern '+state.pattern+' lesson</a>.';
     }
     document.getElementById('patinfo').innerHTML=pi;
     document.getElementById('lg-anchor').hidden = m.idx===0;
