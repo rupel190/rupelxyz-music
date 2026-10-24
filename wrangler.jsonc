@@ -1,10 +1,12 @@
 {
-  // Static-assets Worker: serves the Vite build output in ./dist.
+  // Static-assets Worker: serves the Vite build output in ./dist, which nests every page
+  // under music/ so the paths line up with the route below.
   // The CI deploy command (`npx wrangler deploy`) needs this to know what to ship.
-  // Name must match the existing Worker so the deploy updates it. It is served ONLY at
-  // rupel.xyz/songmap/ (a zone route; the old subdomains were removed 2026-10-17).
-  "name": "song-analyzer",
-  // Only the custom domains serve the site: no *.workers.dev name, no per-version preview URLs.
+  "name": "rupelxyz-music",
+  // `music*` rather than `music/*` so a bare /music reaches this worker too, which redirects
+  // it to /music/. Nothing else on rupel.xyz starts with "music".
+  "routes": [{ "pattern": "rupel.xyz/music*", "zone_name": "rupel.xyz" }],
+  // Only the route serves the site: no *.workers.dev name, no per-version preview URLs.
   "workers_dev": false,
   "preview_urls": false,
   "compatibility_date": "2025-06-18",

@@ -11,21 +11,20 @@
     <meta name="author" content="Christoph Rippel" />
 
     <!--
-      Lives at rupel.xyz/songmap, not on a subdomain: a subdomain accumulates its own
-      authority instead of feeding rupel.xyz, and there was nothing to lose by moving.
-      See vite.config.ts for the matching `base`.
+      Lives at rupel.xyz/music/songmap, not on a subdomain: a subdomain accumulates its own
+      authority instead of feeding rupel.xyz. See vite.config.ts for the matching `base`.
     -->
-    <link rel="canonical" href="https://rupel.xyz/songmap/" />
+    <link rel="canonical" href="https://rupel.xyz/music/songmap/" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://rupel.xyz/songmap/" />
+    <meta property="og:url" content="https://rupel.xyz/music/songmap/" />
     <meta property="og:site_name" content="Song Map" />
     <meta property="og:title" content="Song Map — map a track's structure, sections and arrangement" />
     <meta
       property="og:description"
       content="Waveform, BPM bar-grid, section markers and arrangement lanes. Entirely client-side — your audio never leaves the browser."
     />
-    <meta property="og:image" content="https://rupel.xyz/songmap/og-image.jpg" />
+    <meta property="og:image" content="https://rupel.xyz/music/songmap/og-image.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
 
@@ -35,7 +34,7 @@
       name="twitter:description"
       content="Waveform, BPM bar-grid, section markers and arrangement lanes. Entirely client-side — your audio never leaves the browser."
     />
-    <meta name="twitter:image" content="https://rupel.xyz/songmap/og-image.jpg" />
+    <meta name="twitter:image" content="https://rupel.xyz/music/songmap/og-image.jpg" />
 
     <meta name="theme-color" content="#0d0c10" />
 
@@ -44,7 +43,7 @@
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "Song Map",
-        "url": "https://rupel.xyz/songmap/",
+        "url": "https://rupel.xyz/music/songmap/",
         "description": "A client-side tool for mapping the structure of a track: waveform, BPM bar-grid, section markers and instrument arrangement lanes.",
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "Any (web browser)",
@@ -65,6 +64,6 @@
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/songmap/main.ts"></script>
   </body>
 </html>

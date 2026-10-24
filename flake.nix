@@ -1,5 +1,5 @@
 {
-  description = "song-map dev shell";
+  description = "rupelxyz-music dev shell";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
