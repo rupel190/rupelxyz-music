@@ -35,6 +35,7 @@
   .shots figure { margin: 0; }
   .shots img { width: 100%; height: auto; display: block; border-radius: 3px; border: 1px solid var(--line); }
   .shots figcaption { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .shots.one { grid-template-columns: 1fr; }
   @media (max-width: 600px) { .shots { grid-template-columns: 1fr; } }
   .notice {
     border-left: 3px solid var(--rust);
@@ -76,6 +77,13 @@ drops a fullscreen overlay on top of the Spotify client: lyrics scrolling with a
 a pitch highway showing the note you're supposed to be hitting, and a live score off your
 microphone. Solo, or one to four players head-to-head with a mic each.</p>
 
+<div class="shots one">
+  <figure>
+    <img src="see-through.webp" alt="Singify see-through stage: the pitch highway, live score and lyrics laid over the music video playing in Spotify" width="1600" height="872" fetchpriority="high" decoding="async">
+    <figcaption>See-through (V) — the music video keeps playing behind the pitch highway and lyrics.</figcaption>
+  </figure>
+</div>
+
 <div class="notice">
   <span class="notice-label">Before you install</span>
   <p><strong>Charts by hand, or automatically with the helper.</strong> On its own, the extension
@@ -92,7 +100,7 @@ microphone. Solo, or one to four players head-to-head with a mic each.</p>
 
 <div class="shots">
   <figure>
-    <img src="stage-solo.webp" alt="Singify solo karaoke stage inside Spotify: a pitch highway with golden notes, live score, and lyrics highlighting syllable by syllable" width="1400" height="788" fetchpriority="high" decoding="async">
+    <img src="stage-solo.webp" alt="Singify solo karaoke stage inside Spotify: a pitch highway with golden notes, live score, and lyrics highlighting syllable by syllable" width="1400" height="788" loading="lazy" decoding="async">
     <figcaption>Solo stage — pitch highway, live score, per-syllable lyric wipe, golden notes.</figcaption>
   </figure>
   <figure>
