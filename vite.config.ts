@@ -1,9 +1,34 @@
-import { defineConfig } from 'vite'
+import { dirname } from 'node:path'
+import { defineConfig, type Plugin } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 // Every page in this repo is served under rupel.xyz/music/ by its own worker (see
 // wrangler.jsonc). One HTML entry per page; Vite builds them together and shares chunks.
 const pages = ['index', 'songmap/index', 'modes/index', 'tubs/index', 'singify/index']
+
+// The site chrome every page shares, stamped in at <!--site-nav--> and <!--site-foot-->. The nav is
+// the same markup as on the rest of rupel.xyz (`nav` in the rupelxyz repo's build.ts), so change
+// both together; the hub marks "music" as the current page, every other page as the current
+// section. Pages inside /music/ end with a link back to the hub; the hub itself has no footer.
+function siteChrome(): Plugin {
+  let root = ''
+  return {
+    name: 'site-chrome',
+    configResolved(config) {
+      root = config.root
+    },
+    transformIndexHtml(html, ctx) {
+      if (!html.includes('<!--site-nav-->')) throw new Error(`${ctx.filename}: missing <!--site-nav-->`)
+      const current = dirname(ctx.filename) === root ? 'page' : 'true'
+      return html
+        .replace(
+          '<!--site-nav-->',
+          `<nav class="topnav"><a href="/">&larr; rupel.xyz</a><a href="/writing/">writing</a><a href="/music/" aria-current="${current}">music</a></nav>`,
+        )
+        .replace('<!--site-foot-->', '<footer class="post-foot"><a href="/music/">&larr; all music</a></footer>')
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -33,5 +58,5 @@ export default defineConfig({
       },
     },
   },
-  plugins: [svelte()],
+  plugins: [svelte(), siteChrome()],
 })

@@ -24,6 +24,10 @@ src/tubs/                       TUBS demo; imports the plugin's own renderer fro
 public/<page>/                  files that need a stable URL, e.g. og:image
 ```
 
+Each page marks where the shared nav goes with `<!--site-nav-->`, and pages inside /music/ mark
+their footer with `<!--site-foot-->`; `vite.config.ts` stamps both in, so every page gets the same
+nav as the rest of rupel.xyz. A page without the nav marker fails the build.
+
 Every page links the site's stylesheet, `/assets/blog.css`, which the main rupel.xyz worker
 serves; that's where the nav and base styles come from. Fonts are DM Serif Display, Newsreader
 and DM Mono; the colour tokens sit at the top of each page's `<style>`, with a dark-mode
