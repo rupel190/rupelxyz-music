@@ -1,32 +1,36 @@
-# Song Map
+# rupelxyz-music
 
-A client-side tool for mapping the structure of a track: load an audio file, see its
-waveform, lay a BPM bar-grid over it, drop color-coded **section markers** (intro / verse /
-chorus / drop …), and sketch an **arrangement** of instrument lanes with blocks
-and fades. Everything runs in the browser — no backend, no upload. Markers and arrangement
-persist per file via `localStorage`, and you can copy the whole map out as TSV.
+Everything music on [rupel.xyz](https://rupel.xyz), served at
+[rupel.xyz/music/](https://rupel.xyz/music/). One repo, one build, one Cloudflare worker.
 
-Live: https://songanalyzer.rupel.xyz
+| Page | URL | What it is |
+|---|---|---|
+| `index.html` | [/music/](https://rupel.xyz/music/) | The hub: one line per thing below |
+| `modes/` | [/music/modes/](https://rupel.xyz/music/modes/) | Fretboard Mode Lab: every guitar mode in every key, played with the five major-scale patterns. Vanilla JS in one file. |
+| `songmap/` | [/music/songmap/](https://rupel.xyz/music/songmap/) | Songmap: map a track's sections and arrangement over its waveform. Svelte 5. See [songmap/README.md](songmap/README.md). |
+| `tubs/` | [/music/tubs/](https://rupel.xyz/music/tubs/) | Playable demo of the [TUBS Renderer](https://github.com/rupel190/tubs-renderer) Obsidian plugin |
+| `singify/` | [/music/singify/](https://rupel.xyz/music/singify/) | Write-up of [Singify](https://github.com/rupel190/singify), karaoke inside Spotify |
 
-## Features
+Things that have to live elsewhere keep their own repos: the TUBS plugin (Obsidian's plugin
+list reads `manifest.json` from the repo root) and Singify (a Spotify extension). This repo
+shows them.
 
-- Waveform rendering via the Web Audio API (`decodeAudioData` + downsampled peaks).
-- BPM control with tap-tempo, adjustable bar-1 offset, and a toggleable bar grid.
-- Transport: play/pause plus `«bar` / `bar»` buttons that jump the playhead one whole bar at
-  a time (snapped to bar starts) for quick re-listening.
-- Section markers: tap a section to place one (auto-selected). A marker is grabbed only by its
-  label, so tapping elsewhere on the waveform just seeks — even while a marker is selected, so
-  you can re-listen mid-edit. Edit from a popup pinned to the marker: move it by the bar,
-  rename, delete.
-- Arrangement lanes: tap an empty lane for a default block, or **drag from where you press to
-  size one** (bar-snapped). Tap a block to select it; a popup above sets start / end and one
-  below sets fade-in / fade-out. Hold a +/− stepper to repeat it.
-- Start / end move that edge and carry the fade rigidly — the fade length (and the block's
-  shape) never changes, and no fade is invented where there wasn't one.
-- Per-file persistence (keyed by name + size); copy the whole map to the clipboard as TSV, and
-  import it back the same way (marker times round to whole seconds, block bars are exact).
-- Touch-first: vertical drags scroll and pinch zooms as normal; a horizontal drag on a lane
-  sizes a new block. Edit popups stay anchored to whatever you've selected (built for mobile).
+## Layout
+
+```
+index.html, <page>/index.html   one Vite entry per page (listed in vite.config.ts)
+src/songmap/                    Songmap app
+src/tubs/                       TUBS demo; imports the plugin's own renderer from tubs-renderer/web
+public/<page>/                  files that need a stable URL, e.g. og:image
+```
+
+Every page links the site's stylesheet, `/assets/blog.css`, which the main rupel.xyz worker
+serves; that's where the nav and base styles come from. Fonts are DM Serif Display, Newsreader
+and DM Mono; the colour tokens sit at the top of each page's `<style>`, with a dark-mode
+block under `prefers-color-scheme`.
+
+The TUBS demo depends on `github:rupel190/tubs-renderer`, pinned by `bun.lock`. After a change
+there, push it and run `bun update tubs-renderer` here.
 
 ## Development
 
@@ -35,26 +39,30 @@ The toolchain is pinned in a Nix flake and loaded automatically by direnv:
 ```sh
 direnv allow          # one-time: loads bun + node from the flake on cd
 bun install
-bun run dev           # http://localhost:5173
+bun run dev           # http://localhost:5173/music/
 ```
 
-Without direnv, enter the shell explicitly: `nix develop -c bun run dev`.
+Without direnv, enter the shell explicitly: `nix develop -c bun run dev`. In dev, Vite proxies
+the shared stylesheet from the live rupel.xyz so it loads.
 
 Other scripts:
 
 ```sh
 bun run check         # svelte-check (TypeScript)
-bun run build         # production build → dist/
+bun run build         # production build → dist/music/
 bun run preview       # serve the built dist/ locally
 ```
 
 ## Deployment
 
-Static site on **Cloudflare Pages** (git-connected):
+A static-assets **Cloudflare Worker** named `rupelxyz-music`, deployed by Cloudflare's git-connected
+build on push (`bun run build`, then `npx wrangler deploy`). Its only entry point is the zone
+route `rupel.xyz/music*`, declared in `wrangler.jsonc`. The build nests its output under
+`dist/music/` so the files line up with that route.
 
-- Build command: `bun run build`
-- Build output directory: `dist`
+The site-wide sitemap at rupel.xyz/sitemap.xml lists these pages. It's generated in the
+rupelxyz repo (`APP_PAGES` in `build.ts`), so add a new page there too.
 
 ## Stack
 
-Svelte 5 (runes) · Vite · TypeScript · bun · Nix flake + direnv
+Svelte 5 (runes) · Vite · TypeScript · Tone.js (via tubs-renderer) · bun · Nix flake + direnv
