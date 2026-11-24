@@ -47,14 +47,14 @@ export default defineConfig({
     },
   },
   server: {
-    // Pages link the site's stylesheet at /assets/blog.css, which the main rupel.xyz worker
+    // Pages link the site's stylesheet and fonts under /assets/, which the main rupel.xyz worker
     // serves. There's no main worker in dev, so borrow the live one. The dev server rewrites
-    // the link with `base` (the build leaves it alone), hence the /music prefix here.
+    // the links with `base` (the build leaves them alone), hence the /music prefix here.
     proxy: {
-      '/music/assets/blog.css': {
+      '^/music/assets/(blog\\.css|fonts)': {
         target: 'https://rupel.xyz',
         changeOrigin: true,
-        rewrite: () => '/assets/blog.css',
+        rewrite: (path) => path.replace(/^\/music/, ''),
       },
     },
   },
